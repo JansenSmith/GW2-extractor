@@ -1,2 +1,2 @@
-GuildWars2Client
-pandas
+GuildWars2-API-Client==0.6.0
+pandas==2.2.3
