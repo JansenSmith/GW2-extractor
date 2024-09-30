@@ -29,10 +29,10 @@ for aaa in api_keys:
 		dd = ccc['description']
 		if nn:
 			if verbosity:
-			    print("Adding element:", [jj, vv, ww, nn, dd])
-			result.append([jj, vv, ww, nn, dd])
+			    print("Adding element:", [jj, vv, ww, nn])
+			result.append([jj, vv, ww, nn])
 
-df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item Name', 'Description'])
+df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item Name'])
 
 filename = 'GW2_data_output.csv' 
 df.to_csv(filename, index=False)
