@@ -3,9 +3,6 @@ from gw2api import GuildWars2Client
 
 with open('api_keys.txt', 'r') as opened_api_file:
     api_keys = [line.strip() for line in opened_api_file.readlines()]
-    
-print(api_keys)
-sys.exit()
 
 item_ids = [70093, 24517]
 
