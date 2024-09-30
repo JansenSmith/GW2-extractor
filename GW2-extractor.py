@@ -7,6 +7,8 @@ with open('api_keys.txt', 'r') as opened_api_file:
 item_ids = [70093, 24517]
 
 result = []
+verbosity = True  # Set to False if you don't want the "Adding element"
+
 for aaa in api_keys:
     gg = GuildWars2Client(api_key=aaa)
     
@@ -23,6 +25,8 @@ for aaa in api_keys:
             
             nn = gg.items.get(id=ooo)['name']
             
+            if verbosity:
+                print("Adding element:", [jj, vv, ww, nn, ooo])
             result.append([jj, vv, ww, nn, ooo])
 
 df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Count', 'Item Name', 'Item ID'])
