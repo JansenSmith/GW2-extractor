@@ -1,6 +1,9 @@
 # specifically ignore api_keys.txt
 api_keys.txt
 
+# ignore CSV output 
+*.csv
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
