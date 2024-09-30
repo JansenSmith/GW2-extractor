@@ -4,6 +4,9 @@ api_keys.txt
 # ignore CSV output 
 *.csv
 
+# ignore all backup files
+*.BAK
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
