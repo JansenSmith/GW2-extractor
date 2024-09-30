@@ -1,0 +1,2 @@
+GuildWars2Client
+pandas
