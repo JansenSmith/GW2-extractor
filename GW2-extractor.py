@@ -29,6 +29,8 @@ for aaa in api_keys:
                 print("Adding element:", [jj, vv, ww, nn, ooo])
             result.append([jj, vv, ww, nn, ooo])
 
-df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Count', 'Item Name', 'Item ID'])
+df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item Name', 'Item ID'])
 
-print(df)
+filename = 'GW2_data_output.csv' 
+df.to_csv(filename, index=False)
+print("Saved to:", filename)
