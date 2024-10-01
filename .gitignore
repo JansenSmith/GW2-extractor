@@ -3,6 +3,7 @@ api_keys.txt
 
 # ignore CSV output 
 *.csv
+*.csv#
 
 # ignore all backup files
 *.BAK
