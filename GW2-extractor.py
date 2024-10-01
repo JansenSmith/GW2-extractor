@@ -4,7 +4,7 @@ from gw2api import GuildWars2Client
 verbosity = True  # Set to False if you don't want the "Adding element"
 get_materials = False
 
-item_ids = 70093
+item_ids = [70093]
 #item_ids = [70093, 24517]
 
 # takes in a results list, account name, nominal character name and a list
