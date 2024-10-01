@@ -32,6 +32,18 @@ for aaa in api_keys:
 			if verbosity:
 			    print("Adding element:", [jj, vv, ww, nn, oo])
 			result.append([jj, vv, ww, nn, oo])
+			
+	cc = gg.characters.get()
+	for vv in cc:
+		ss = gg.charactersinventory.get(vv)
+
+		for ooo in item_ids:
+			qq = [d['count'] for bag in ss['bags'] if bag for d in bag.get('inventory',[]) if isinstance(d, dict) and d['id'] == ooo]
+			ww = sum(qq)
+			nn = gg.items.get(id=ooo)['name']
+			if verbosity:
+				print("Adding element:", [jj, vv, ww, nn, ooo])
+			result.append([jj, vv, ww, nn, ooo])
 
 df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item Name', "Item ID"])
 
