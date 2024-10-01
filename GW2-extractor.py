@@ -2,7 +2,10 @@ import pandas as pd
 from gw2api import GuildWars2Client
 
 verbosity = True  # Set to False if you don't want the "Adding element"
+get_shared = False
 get_materials = False
+get_bank = False
+get_wallet = False
 
 item_ids = [70093]
 #item_ids = [70093, 24517]
@@ -38,31 +41,34 @@ for aaa in api_keys:
 
 	jj = gg.account.get()['name']
 	
-	vv = jj + '.shared'
-	inv = gg.accountinventory.get()
-	result = search_list(result, jj, vv, inv)
+	if get_shared:
+		vv = jj + '.shared'
+		inv = gg.accountinventory.get()
+		result = search_list(result, jj, vv, inv)
 	
 	if get_materials:
 		vv = jj + '.materials'
 		inv = gg.accountmaterials.get()
 		result = search_list(result, jj, vv, inv)
 	
-	vv = jj + '.bank'
-	inv = gg.accountbank.get()
-	result = search_list(result, jj, vv, inv)
+	if get_bank:
+		vv = jj + '.bank'
+		inv = gg.accountbank.get()
+		result = search_list(result, jj, vv, inv)
 	
-	vv = jj + '.wallet'
-	wallet = gg.accountwallet.get()
-	for currency in gg.currencies.get():
-		ccc = gg.currencies.get(id=currency)
-		ww = get_value(wallet,currency)
-		nn = ccc['name']
-		dd = ccc.get('description', '')
-		oo = currency
-		if nn:
-			if verbosity:
-				print("Adding element:", [jj, vv, ww, nn, oo, dd])
-			result.append([jj, vv, ww, nn, oo, dd])
+	if get_wallet:
+		vv = jj + '.wallet'
+		wallet = gg.accountwallet.get()
+		for currency in gg.currencies.get():
+			ccc = gg.currencies.get(id=currency)
+			ww = get_value(wallet,currency)
+			nn = ccc['name']
+			dd = ccc.get('description', '')
+			oo = currency
+			if nn:
+				if verbosity:
+					print("Adding element:", [jj, vv, ww, nn, oo, dd])
+				result.append([jj, vv, ww, nn, oo, dd])
 			
 	cc = gg.characters.get()
 	for vv in cc:
