@@ -1,6 +1,21 @@
 import pandas as pd
 from gw2api import GuildWars2Client
 
+# takes in a results list, account name, nominal character name and a list
+# returns the results list with the contained items added
+def search_list(result, jj, vv, ll):
+	for item in ll:
+		if item:
+			oo = item['id']
+			ww = item['count']
+			ii = gg.items.get(id=oo)
+			nn = ii['name']
+			##dd = ii['description']
+			if verbosity:
+			    print("Adding element:", [jj, vv, ww, nn, oo])
+			result.append([jj, vv, ww, nn, oo])
+	return result
+
 def get_value(wallet, id):
     for item in wallet:
         if item['id'] == id:
@@ -20,21 +35,21 @@ for aaa in api_keys:
 
 	jj = gg.account.get()['name']
 	
-	vv = jj + '.wallet'
-	wallet = gg.accountwallet.get()
-	for currency in gg.currencies.get():
-		ccc = gg.currencies.get(id=currency)
-		ww = get_value(wallet,currency)
-		nn = ccc['name']
-		dd = ccc['description']
-		oo = currency
-		if nn:
-			if verbosity:
-			    print("Adding element:", [jj, vv, ww, nn, oo])
-			result.append([jj, vv, ww, nn, oo])
+	vv = jj + '.shared'
+	inv = gg.accountinventory.get()
+	result = search_list(result, jj, vv, inv)
+	
+	vv = jj + '.materials'
+	inv = gg.accountmaterials.get()
+	result = search_list(result, jj, vv, inv)
+	
+	vv = jj + '.bank'
+	inv = gg.accountbank.get()
+	result = search_list(result, jj, vv, inv)
+	
 
 df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item Name', "Item ID"])
 
-filename = 'GW2_data_output.csv' 
+filename = 'GW2_account_output.csv' 
 df.to_csv(filename, index=False)
 print("Saved to:", filename)
