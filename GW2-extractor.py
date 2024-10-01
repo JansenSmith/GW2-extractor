@@ -27,12 +27,13 @@ for aaa in api_keys:
 		ww = get_value(wallet,currency)
 		nn = ccc['name']
 		dd = ccc['description']
+		oo = currency
 		if nn:
 			if verbosity:
-			    print("Adding element:", [jj, vv, ww, nn])
-			result.append([jj, vv, ww, nn])
+			    print("Adding element:", [jj, vv, ww, nn, oo])
+			result.append([jj, vv, ww, nn, oo])
 
-df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item Name'])
+df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item Name', "Item ID"])
 
 filename = 'GW2_data_output.csv' 
 df.to_csv(filename, index=False)
