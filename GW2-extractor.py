@@ -76,7 +76,6 @@ for aaa in api_keys:
 			if verbosity:
 				print("Adding element:", [jj, vv, ww, nn, ooo, dd])
 			result.append([jj, vv, ww, nn, ooo, dd])
-	
 
 df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item Name', 'Item ID', 'Description'])
 
