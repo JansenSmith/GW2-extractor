@@ -2,12 +2,13 @@ import pandas as pd
 from gw2api import GuildWars2Client
 import requests
 from tenacity import retry, stop_after_attempt, wait_exponential
+import time
 
 verbosity = True  # Set to False if you don't want the "Adding element"
-get_shared = False
-get_materials = False
-get_bank = False 
-get_wallet = False
+get_shared = True
+get_materials = True
+get_bank = True 
+get_wallet = True
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2))
 def make_request(url):
@@ -35,19 +36,18 @@ class LocalCache:
                 return (item['name'], item.get('description', ''))
         # If the item is not found in the cache, call add_item and then check again
         item = gg.items.get(id=item_id)
+        time.sleep(0.1)
         self.add_item(item_id, item['name'], item.get('description', ''))
         return self.check_cache(item_id)
 
 # takes in a results list, account name, nominal character name and a list
 # returns the results list with the contained items added
-def search_list(result, jj, vv, ll):
+def search_list(result, cache, jj, vv, ll):
 	for item in ll:
 		if item:
 			oo = item['id']
 			ww = item['count']
-			ii = gg.items.get(id=oo)
-			nn = ii['name']
-			dd = ii.get('description', '')
+			nn, dd = cache.check_cache(oo)
 			if verbosity:
 			    print("Adding element:", [jj, vv, ww, nn, oo, dd])
 			result.append([jj, vv, ww, nn, oo, dd])
@@ -73,17 +73,17 @@ for aaa in api_keys:
 	if get_shared:
 		vv = jj + '.shared'
 		inv = gg.accountinventory.get()
-		result = search_list(result, jj, vv, inv)
+		result = search_list(result, itemCache, jj, vv, inv)
 	
 	if get_materials:
 		vv = jj + '.materials'
 		inv = gg.accountmaterials.get()
-		result = search_list(result, jj, vv, inv)
+		result = search_list(result, itemCache, jj, vv, inv)
 	
 	if get_bank:
 		vv = jj + '.bank'
 		inv = gg.accountbank.get()
-		result = search_list(result, jj, vv, inv)
+		result = search_list(result, itemCache, jj, vv, inv)
 	
 	if get_wallet:
 		vv = jj + '.wallet'
