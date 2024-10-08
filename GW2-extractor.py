@@ -1,8 +1,6 @@
 import pandas as pd
 import datetime
 from gw2api import GuildWars2Client
-import requests
-from tenacity import retry, stop_after_attempt, wait_exponential
 import time
 
 verbosity = True  # Set to False if you don't want the "Adding element"
@@ -10,15 +8,6 @@ get_shared = True
 get_materials = True
 get_bank = True 
 get_wallet = True 
-
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2))
-def make_request(url):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Request failed: {e}")
 
 item_ids = [70093]
 #item_ids = [70093, 24517]
