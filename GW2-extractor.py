@@ -1,4 +1,5 @@
 import pandas as pd
+import datetime
 from gw2api import GuildWars2Client
 import requests
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -130,11 +131,17 @@ for aaa in api_keys:
 
 df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item Name', 'Item ID', 'Description'])
 
+# Generate current timestamp
+timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+# Select only the rows where 'Item Name' is 'Shiny Bauble'
 df_baubles = df.loc[df['Item Name'] == 'Shiny Bauble']
-filename_baubles = 'GW2_baubles_output.csv'
+
+# Write the result to a csv file with timestamp in filename
+filename_baubles = f'GW2_baubles_output_{timestamp}.csv'
 df_baubles.to_csv(filename_baubles, index=false)
 
-filename = 'GW2_data_output.csv' 
+filename = f'GW2_data_output_{timestamp}.csv' 
 df.to_csv(filename, index=False)
 
 
