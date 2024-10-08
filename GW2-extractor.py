@@ -8,7 +8,7 @@ verbosity = True  # Set to False if you don't want the "Adding element"
 get_shared = True
 get_materials = True
 get_bank = True 
-get_wallet = True
+get_wallet = True 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2))
 def make_request(url):
@@ -130,6 +130,12 @@ for aaa in api_keys:
 
 df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item Name', 'Item ID', 'Description'])
 
+df_baubles = df.loc[df['Item Name'] == 'Shiny Bauble']
+filename_baubles = 'GW2_baubles_output.csv'
+df_baubles.to_csv(filename_baubles, index=false)
+
 filename = 'GW2_data_output.csv' 
 df.to_csv(filename, index=False)
+
+
 print("Saved to:", filename)
