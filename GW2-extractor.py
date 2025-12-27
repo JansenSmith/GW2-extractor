@@ -4,6 +4,7 @@ from requests.exceptions import HTTPError
 import time
 
 verbosity = True  # Set to False if you don't want the "Adding element" lines to print
+get_unfiltered = False  # Set to True to get ALL items, ignoring item_ids filter
 get_shared = False
 get_materials = False
 get_bank = False
@@ -77,15 +78,33 @@ for aaa in api_keys:
 		for attempt in range(max_retries):
 			try:
 				ss = gg.charactersinventory.get(vv)
-				for ooo in item_ids:
-					qq = [d['count'] for bag in ss['bags'] if bag for d in bag.get('inventory',[]) if isinstance(d, dict) and d['id'] == ooo]
-					ww = sum(qq)
-					ii = gg.items.get(id=ooo)
-					nn = ii['name']
-					dd = ii.get('description', '')
-					if verbosity:
-						print("Adding element:", [jj, vv, ww, nn, ooo, dd])
-					result.append([jj, vv, ww, nn, ooo, dd])
+				
+				if get_unfiltered:
+					# Get ALL items in character inventory
+					for bag in ss['bags']:
+						if bag:
+							for item in bag.get('inventory', []):
+								if isinstance(item, dict) and item:
+									ooo = item['id']
+									ww = item['count']
+									ii = gg.items.get(id=ooo)
+									nn = ii['name']
+									dd = ii.get('description', '')
+									if verbosity:
+										print("Adding element:", [jj, vv, ww, nn, ooo, dd])
+									result.append([jj, vv, ww, nn, ooo, dd])
+				else:
+					# Filter by item_ids (original behavior)
+					for ooo in item_ids:
+						qq = [d['count'] for bag in ss['bags'] if bag for d in bag.get('inventory',[]) if isinstance(d, dict) and d['id'] == ooo]
+						ww = sum(qq)
+						ii = gg.items.get(id=ooo)
+						nn = ii['name']
+						dd = ii.get('description', '')
+						if verbosity:
+							print("Adding element:", [jj, vv, ww, nn, ooo, dd])
+						result.append([jj, vv, ww, nn, ooo, dd])
+				
 				break  # Success, exit retry loop
 			except HTTPError as e:
 				if e.response.status_code == 500:
