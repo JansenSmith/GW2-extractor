@@ -3,13 +3,16 @@ from gw2api import GuildWars2Client
 from requests.exceptions import HTTPError
 import time
 
-verbosity = True
+verbosity = True  # Set to False if you don't want the "Adding element" lines to print
 get_shared = False
 get_materials = False
 get_bank = False
 get_wallet = False
 item_ids = [70093]
 
+
+# takes in a results list, account name, nominal character name and a list
+# returns the results list with the contained items added
 def search_list(result, jj, vv, ll):
 	for item in ll:
 		if item:
