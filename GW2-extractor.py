@@ -167,6 +167,12 @@ def main():
                         break
 
     df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item Name', 'Item ID', 'Description'])
+    
+    # Create output directory if it doesn't exist (cross-platform)
+    output_dir = os.path.dirname(args.output)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+    
     df.to_csv(args.output, index=False)
     print("Saved to:", args.output)
 
