@@ -107,12 +107,13 @@ def main():
         if get_wallet:
             vv = jj + '.wallet'
             wallet = gg.accountwallet.get()
-            for currency in gg.currencies.get():
-                ccc = gg.currencies.get(id=currency)
-                ww = get_value(wallet,currency)
+            currency_ids = gg.currencies.get()
+            all_currencies = gg.currencies.get(ids=currency_ids)
+            for ccc in all_currencies:
+                oo = ccc['id']
+                ww = get_value(wallet, oo)
                 nn = ccc['name']
                 dd = ccc.get('description', '')
-                oo = currency
                 if nn:
                     if verbosity:
                         print("Adding element:", [jj, vv, ww, nn, oo, dd])
