@@ -35,8 +35,8 @@ def append_item(result, jj, vv, ww, oo, items_dict, verbosity):
     nn = ii.get('name', '')
     dd = ii.get('description', '')
     if verbosity:
-        print("Adding element:", [jj, vv, ww, nn, oo, dd])
-    result.append([jj, vv, ww, nn, oo, dd])
+        print("Adding element:", [jj, vv, ww, oo, nn, dd])
+    result.append([jj, vv, ww, oo, nn, dd])
 
 
 # takes in a results list, account name, nominal character name, a list of inventory entries,
@@ -176,8 +176,8 @@ def main():
                 dd = ccc.get('description', '')
                 if nn:
                     if verbosity:
-                        print("Adding element:", [jj, vv, ww, nn, oo, dd])
-                    result.append([jj, vv, ww, nn, oo, dd])
+                        print("Adding element:", [jj, vv, ww, oo, nn, dd])
+                    result.append([jj, vv, ww, oo, nn, dd])
 
         for vv, ss in char_invs:
             if ss is None:
@@ -196,7 +196,7 @@ def main():
                     ww = sum(qq)
                     append_item(result, jj, vv, ww, ooo, items_dict, verbosity)
 
-    df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item Name', 'Item ID', 'Description'])
+    df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item ID', 'Item Name', 'Description'])
 
     # Create output directory if it doesn't exist (cross-platform)
     output_dir = os.path.dirname(args.output)
