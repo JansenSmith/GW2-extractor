@@ -270,6 +270,12 @@ def main():
                     bound = bool(qq) and all(d.get('binding') for d in qq)
                     append_item(result, jj, vv, ww, ooo, items_dict, prices, bound, verbosity)
 
+    # Wallet currencies first - they are the account-wide totals, read at a glance,
+    # and they do not belong buried between storage and character rows.
+    wallet_rows = [row for row in result if str(row[1]).endswith('.wallet')]
+    other_rows = [row for row in result if not str(row[1]).endswith('.wallet')]
+    result = wallet_rows + other_rows
+
     df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item ID',
                                        'Item Name', 'Value', 'Source', 'Description'])
 
