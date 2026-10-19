@@ -66,4 +66,17 @@ python GW2-extractor.py --get-unfiltered --verbose --output characters.csv
 
 ## Output
 
-CSV with columns: Account Name, Character Name, Amount, Item Name, Item ID, Description
+CSV with columns: Account Name, Character Name, Amount, Item ID, Item Name, Value, Description, Source
+
+**Value** is what one of the item is worth, in gold. 1 gold is exactly 10000 copper, so the four
+decimals read off as silver and copper: `0.3000` is 30 silver, `2.0887` is 2 gold 8 silver 87 copper.
+Multiply by `Amount` for what a stack is worth.
+
+**Source** says where that number came from, and is only there to explain a surprising Value:
+
+- `TP` - lowest current sell listing on the trading post, with the 15% trading post fee already
+  taken off, so it is what you would actually pocket.
+- `Vendor` - the item cannot be listed on the trading post (or this copy is bound), but a merchant
+  will buy it. No fee applies, so the number is raw.
+- `-` - no value: the item can be neither sold on the trading post nor vendored. Wallet currencies
+  are always `-`, since they are not items and have no price.

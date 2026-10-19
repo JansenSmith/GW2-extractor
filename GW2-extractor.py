@@ -17,6 +17,10 @@ def display_readme():
         print("Run with --help for argument details.")
 
 
+TP_FEE_MULTIPLIER = 0.85  # 5% listing fee + 10% exchange fee, both taken out of the seller's cut
+NO_VALUE_SOURCE = '-'
+
+
 def batch_get_items(gg, item_ids, chunk_size=200):
     items_dict = {}
     unique_ids = list({int(i) for i in item_ids})
@@ -30,23 +34,61 @@ def batch_get_items(gg, item_ids, chunk_size=200):
     return items_dict
 
 
-def append_item(result, jj, vv, ww, oo, items_dict, verbosity):
+def batch_get_prices(gg, item_ids, chunk_size=200):
+    prices = {}
+    unique_ids = list({int(i) for i in item_ids})
+    for i in range(0, len(unique_ids), chunk_size):
+        chunk = unique_ids[i:i + chunk_size]
+        if not chunk:
+            continue
+        try:
+            for entry in gg.commerceprices.get(ids=chunk):
+                prices[entry['id']] = entry
+        except HTTPError as e:
+            # Untradable ids are left out of the reply. A chunk where nothing at all is
+            # tradable 404s instead, which is not a failure - those items just have no price.
+            if e.response is not None and e.response.status_code == 404:
+                continue
+            print(f"WARNING: price lookup failed for {len(chunk)} items, leaving them unpriced: {e}")
+    return prices
+
+
+def format_coin(copper):
+    # 1 gold is exactly 10000 copper, so gold as a 4-decimal number reads off as gold.silver+copper
+    return f"{copper / 10000:.4f}"
+
+
+def item_value(oo, bound, items_dict, prices):
+    """First rung that applies wins. A bound copy cannot be listed on the trading post,
+    but a merchant will still buy it, so binding demotes a row rather than emptying it."""
+    ii = items_dict.get(oo, {})
+    pp = prices.get(oo)
+    if not bound and pp and pp['sells']['unit_price'] > 0:
+        return format_coin(pp['sells']['unit_price'] * TP_FEE_MULTIPLIER), 'TP'
+    vendor_value = ii.get('vendor_value', 0)
+    if vendor_value > 0 and 'NoSell' not in ii.get('flags', []):
+        return format_coin(vendor_value), 'Vendor'
+    return '', NO_VALUE_SOURCE
+
+
+def append_item(result, jj, vv, ww, oo, items_dict, prices, bound, verbosity):
     ii = items_dict.get(oo, {})
     nn = ii.get('name', '')
     dd = ii.get('description', '')
+    xx, zz = item_value(oo, bound, items_dict, prices)
     if verbosity:
-        print("Adding element:", [jj, vv, ww, oo, nn, dd])
-    result.append([jj, vv, ww, oo, nn, dd])
+        print("Adding element:", [jj, vv, ww, oo, nn, xx, dd, zz])
+    result.append([jj, vv, ww, oo, nn, xx, dd, zz])
 
 
 # takes in a results list, account name, nominal character name, a list of inventory entries,
 # and a pre-fetched items dict. returns the results list with the contained items added.
-def search_list(result, jj, vv, ll, items_dict, verbosity):
+def search_list(result, jj, vv, ll, items_dict, prices, verbosity):
     for item in ll:
         if item:
             oo = item['id']
             ww = item['count']
-            append_item(result, jj, vv, ww, oo, items_dict, verbosity)
+            append_item(result, jj, vv, ww, oo, items_dict, prices, bool(item.get('binding')), verbosity)
     return result
 
 def get_value(wallet, id):
@@ -103,6 +145,8 @@ def main():
         api_keys = args.api_keys
 
     result = []
+    prices = {}            # item id -> trading post price, shared across accounts
+    priced_ids = set()     # ids already looked up, tradable or not
     for aaa in api_keys:
         gg = GuildWars2Client(api_key=aaa)
         jj = gg.account.get()['name']
@@ -157,12 +201,16 @@ def main():
         if not get_unfiltered:
             all_ids.update(item_ids)
 
-        # Phase 4: one batched item lookup
+        # Phase 4: one batched item lookup, then one batched price lookup
         items_dict = batch_get_items(gg, all_ids)
+        unpriced = all_ids - priced_ids
+        if unpriced:
+            prices.update(batch_get_prices(gg, unpriced))
+            priced_ids |= unpriced
 
         # Phase 5: emit rows in original order — account inventories, wallet, characters
         for vv, inv in inv_groups:
-            result = search_list(result, jj, vv, inv, items_dict, verbosity)
+            result = search_list(result, jj, vv, inv, items_dict, prices, verbosity)
 
         if get_wallet:
             vv = jj + '.wallet'
@@ -175,9 +223,10 @@ def main():
                 nn = ccc['name']
                 dd = ccc.get('description', '')
                 if nn:
+                    # Currencies are not items; they have no trading post or vendor price
                     if verbosity:
-                        print("Adding element:", [jj, vv, ww, oo, nn, dd])
-                    result.append([jj, vv, ww, oo, nn, dd])
+                        print("Adding element:", [jj, vv, ww, oo, nn, '', dd, NO_VALUE_SOURCE])
+                    result.append([jj, vv, ww, oo, nn, '', dd, NO_VALUE_SOURCE])
 
         for vv, ss in char_invs:
             if ss is None:
@@ -189,14 +238,18 @@ def main():
                             if isinstance(item, dict) and item:
                                 ooo = item['id']
                                 ww = item['count']
-                                append_item(result, jj, vv, ww, ooo, items_dict, verbosity)
+                                append_item(result, jj, vv, ww, ooo, items_dict, prices,
+                                            bool(item.get('binding')), verbosity)
             else:
                 for ooo in item_ids:
-                    qq = [d['count'] for bag in ss['bags'] if bag for d in bag.get('inventory', []) if isinstance(d, dict) and d['id'] == ooo]
-                    ww = sum(qq)
-                    append_item(result, jj, vv, ww, ooo, items_dict, verbosity)
+                    qq = [d for bag in ss['bags'] if bag for d in bag.get('inventory', []) if isinstance(d, dict) and d['id'] == ooo]
+                    ww = sum(d['count'] for d in qq)
+                    # One unbound copy means the trading post price is reachable for this row
+                    bound = bool(qq) and all(d.get('binding') for d in qq)
+                    append_item(result, jj, vv, ww, ooo, items_dict, prices, bound, verbosity)
 
-    df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item ID', 'Item Name', 'Description'])
+    df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item ID',
+                                       'Item Name', 'Value', 'Description', 'Source'])
 
     # Create output directory if it doesn't exist (cross-platform)
     output_dir = os.path.dirname(args.output)
