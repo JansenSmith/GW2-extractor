@@ -15,7 +15,8 @@ Running without arguments displays this README.
 
 - `--api-keys` - API key(s) or path to API keys file (default: `api_keys.txt`)
 - `--output PATH` - Output CSV filename (default: `GW2_data_output.csv`)
-- `--item-ids` - Item ID(s) or path to item IDs file
+- `--item-ids` - Item ID(s) or path to item IDs file. Limits every section of the report - characters,
+  bank, materials and shared inventory alike - to those items.
 - `--get-unfiltered` - Get ALL items, ignoring item-ids filter
 - `--get-shared` - Include shared inventory
 - `--get-materials` - Include materials storage

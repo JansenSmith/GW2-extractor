@@ -83,10 +83,13 @@ def append_item(result, jj, vv, ww, oo, items_dict, prices, bound, verbosity):
 
 # takes in a results list, account name, nominal character name, a list of inventory entries,
 # and a pre-fetched items dict. returns the results list with the contained items added.
-def search_list(result, jj, vv, ll, items_dict, prices, verbosity):
+# id_filter, when given, limits the entries to those item ids.
+def search_list(result, jj, vv, ll, items_dict, prices, verbosity, id_filter=None):
     for item in ll:
         if item:
             oo = item['id']
+            if id_filter is not None and oo not in id_filter:
+                continue
             ww = item['count']
             append_item(result, jj, vv, ww, oo, items_dict, prices, bool(item.get('binding')), verbosity)
     return result
@@ -184,11 +187,13 @@ def main():
                         break
             char_invs.append((vv, ss))
 
-        # Phase 3: collect every item id we'll need to render
+        # Phase 3: collect every item id we'll need to render. When the caller asked for
+        # specific items, that applies everywhere - storage included, not just characters.
+        id_filter = set(item_ids) if (item_ids and not get_unfiltered) else None
         all_ids = set()
         for _, inv in inv_groups:
             for item in inv:
-                if item:
+                if item and (id_filter is None or item['id'] in id_filter):
                     all_ids.add(item['id'])
         for _, ss in char_invs:
             if ss is None:
@@ -197,7 +202,8 @@ def main():
                 if bag:
                     for item in bag.get('inventory', []):
                         if isinstance(item, dict) and item:
-                            all_ids.add(item['id'])
+                            if id_filter is None or item['id'] in id_filter:
+                                all_ids.add(item['id'])
         if not get_unfiltered:
             all_ids.update(item_ids)
 
@@ -210,7 +216,7 @@ def main():
 
         # Phase 5: emit rows in original order — account inventories, wallet, characters
         for vv, inv in inv_groups:
-            result = search_list(result, jj, vv, inv, items_dict, prices, verbosity)
+            result = search_list(result, jj, vv, inv, items_dict, prices, verbosity, id_filter)
 
         if get_wallet:
             vv = jj + '.wallet'
