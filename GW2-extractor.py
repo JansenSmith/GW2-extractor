@@ -21,6 +21,20 @@ TP_FEE_MULTIPLIER = 0.85  # 5% listing fee + 10% exchange fee, both taken out of
 NO_VALUE_SOURCE = '-'
 
 
+def read_api_keys(path):
+    """Read one key per line, ignoring blanks, comments, and anything after a comma.
+    A trailing label like 'KEY,jazz' is a note to self, not part of the key - sending it
+    whole is what caused a 401 in June."""
+    keys = []
+    with open(path, 'r') as opened_api_file:
+        for line in opened_api_file:
+            line = line.split('#', 1)[0]
+            key = line.split(',', 1)[0].strip()
+            if key:
+                keys.append(key)
+    return keys
+
+
 def batch_get_items(gg, item_ids, chunk_size=200):
     items_dict = {}
     unique_ids = list({int(i) for i in item_ids})
@@ -141,8 +155,10 @@ def main():
     # Load API keys - can be file path or direct keys
     if len(args.api_keys) == 1 and os.path.isfile(args.api_keys[0]):
         # It's a file path
-        with open(args.api_keys[0], 'r') as opened_api_file:
-            api_keys = [line.strip() for line in opened_api_file.readlines()]
+        api_keys = read_api_keys(args.api_keys[0])
+        if not api_keys:
+            print(f"ERROR: no API keys found in {args.api_keys[0]}")
+            sys.exit(1)
     else:
         # Treat as direct API key(s)
         api_keys = args.api_keys
