@@ -77,8 +77,8 @@ def append_item(result, jj, vv, ww, oo, items_dict, prices, bound, verbosity):
     dd = ii.get('description', '')
     xx, zz = item_value(oo, bound, items_dict, prices)
     if verbosity:
-        print("Adding element:", [jj, vv, ww, oo, nn, xx, dd, zz])
-    result.append([jj, vv, ww, oo, nn, xx, dd, zz])
+        print("Adding element:", [jj, vv, ww, oo, nn, xx, zz, dd])
+    result.append([jj, vv, ww, oo, nn, xx, zz, dd])
 
 
 # takes in a results list, account name, nominal character name, a list of inventory entries,
@@ -225,8 +225,8 @@ def main():
                 if nn:
                     # Currencies are not items; they have no trading post or vendor price
                     if verbosity:
-                        print("Adding element:", [jj, vv, ww, oo, nn, '', dd, NO_VALUE_SOURCE])
-                    result.append([jj, vv, ww, oo, nn, '', dd, NO_VALUE_SOURCE])
+                        print("Adding element:", [jj, vv, ww, oo, nn, '', NO_VALUE_SOURCE, dd])
+                    result.append([jj, vv, ww, oo, nn, '', NO_VALUE_SOURCE, dd])
 
         for vv, ss in char_invs:
             if ss is None:
@@ -249,7 +249,7 @@ def main():
                     append_item(result, jj, vv, ww, ooo, items_dict, prices, bound, verbosity)
 
     df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item ID',
-                                       'Item Name', 'Value', 'Description', 'Source'])
+                                       'Item Name', 'Value', 'Source', 'Description'])
 
     # Create output directory if it doesn't exist (cross-platform)
     output_dir = os.path.dirname(args.output)

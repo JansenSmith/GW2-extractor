@@ -66,7 +66,7 @@ python GW2-extractor.py --get-unfiltered --verbose --output characters.csv
 
 ## Output
 
-CSV with columns: Account Name, Character Name, Amount, Item ID, Item Name, Value, Description, Source
+CSV with columns: Account Name, Character Name, Amount, Item ID, Item Name, Value, Source, Description
 
 **Value** is what one of the item is worth, in gold. 1 gold is exactly 10000 copper, so the four
 decimals read off as silver and copper: `0.3000` is 30 silver, `2.0887` is 2 gold 8 silver 87 copper.
