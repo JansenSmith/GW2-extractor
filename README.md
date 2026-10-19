@@ -34,7 +34,9 @@ Running without arguments displays this README.
 ```
 
 **From files:**
-- **API keys file**: One GW2 API key per line
+- **API keys file**: One GW2 API key per line. Blank lines are skipped, and anything after a `#`
+  or a `,` on a line is ignored - so `YOUR-KEY-HERE,jazz` works and the `,jazz` is treated as a note
+  rather than sent as part of the key.
 - **Item IDs file**: One item ID per line
 
 ## Examples
