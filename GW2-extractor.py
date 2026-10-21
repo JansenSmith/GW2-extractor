@@ -20,6 +20,10 @@ def display_readme():
 TP_FEE_MULTIPLIER = 0.85  # 5% listing fee + 10% exchange fee, both taken out of the seller's cut
 NO_VALUE_SOURCE = '-'
 
+# Column order is part of the output contract - mom's sheet formulas point at positions.
+COLUMNS = ['Account Name', 'Character Name', 'Amount', 'Item ID',
+           'Item Name', 'Value', 'Source', 'Description']
+
 
 def read_api_keys(path):
     """Read one key per line, ignoring blanks, comments, and anything after a comma.
@@ -33,6 +37,32 @@ def read_api_keys(path):
             if key:
                 keys.append(key)
     return keys
+
+
+def read_item_ids(path):
+    """Read one item id per line, tolerantly. This is the file mom actually edits.
+
+    Notepad on Windows writes a UTF-8 BOM, which used to crash the run with a bare
+    ValueError; `utf-8-sig` eats it. Duplicates are dropped because the character loop
+    iterates this list directly, so a copy-pasted id silently doubled its rows on every
+    character. A line that is not a number is reported and skipped rather than killing
+    the run - mom gets a report plus a warning instead of a traceback and nothing."""
+    ids = []
+    seen = set()
+    with open(path, 'r', encoding='utf-8-sig') as opened_item_file:
+        for lineno, line in enumerate(opened_item_file, 1):
+            text = line.split('#', 1)[0].strip()
+            if not text:
+                continue
+            try:
+                oo = int(text)
+            except ValueError:
+                print(f"WARNING: {path} line {lineno}: '{text}' is not an item id, skipping it")
+                continue
+            if oo not in seen:
+                seen.add(oo)
+                ids.append(oo)
+    return ids
 
 
 def batch_get_items(gg, item_ids, chunk_size=200):
@@ -114,6 +144,76 @@ def get_value(wallet, id):
             return item['value']
     return 0
 
+
+def build_rows(account_name, inv_groups, char_invs, items_dict, prices, item_ids,
+               id_filter=None, dump_all=False, wallet=None, currencies=None,
+               verbosity=False):
+    """Turn one account's already-fetched data into CSV rows.
+
+    Pure: no API calls, no file IO, no clock. Everything that decides what lands in
+    the spreadsheet lives here, which is what makes the filtering testable without a
+    key - see `tests/test_build_rows.py`.
+
+    account_name: as reported by /v2/account, used in the first column
+    inv_groups:   list of (section label, inventory entries) for shared/materials/bank
+    char_invs:    list of (character name, inventory payload or None for a failed fetch)
+    item_ids:     the ids the caller asked for, in their original order
+    id_filter:    set of those ids, or None to leave every row in
+    dump_all:     True for --get-unfiltered; emits every character item rather than
+                  one row per requested id. Not the same as `id_filter is None`:
+                  with neither flag given, storage is dumped whole but the character
+                  loop has no ids to walk and so contributes nothing.
+    wallet/currencies: the two /v2 wallet payloads, or None to leave the wallet out
+    """
+    rows = []
+
+    for vv, inv in inv_groups:
+        search_list(rows, account_name, vv, inv, items_dict, prices, verbosity, id_filter)
+
+    if wallet is not None and currencies is not None:
+        vv = account_name + '.wallet'
+        for ccc in currencies:
+            oo = ccc['id']
+            ww = get_value(wallet, oo)
+            nn = ccc['name']
+            dd = ccc.get('description', '')
+            if nn:
+                # Currencies have no trading post or vendor price
+                if verbosity:
+                    print("Adding element:", [account_name, vv, ww, oo, nn, '', NO_VALUE_SOURCE, dd])
+                rows.append([account_name, vv, ww, oo, nn, '', NO_VALUE_SOURCE, dd])
+
+    for vv, ss in char_invs:
+        if ss is None:
+            continue
+        if dump_all:
+            for bag in ss['bags']:
+                if bag:
+                    for item in bag.get('inventory', []):
+                        if isinstance(item, dict) and item:
+                            append_item(rows, account_name, vv, item['count'], item['id'],
+                                        items_dict, prices, bool(item.get('binding')), verbosity)
+        else:
+            for ooo in item_ids:
+                qq = [d for bag in ss['bags'] if bag for d in bag.get('inventory', []) if isinstance(d, dict) and d['id'] == ooo]
+                ww = sum(d['count'] for d in qq)
+                # One unbound copy means the trading post price is reachable for this row
+                bound = bool(qq) and all(d.get('binding') for d in qq)
+                append_item(rows, account_name, vv, ww, ooo, items_dict, prices, bound, verbosity)
+
+    return rows
+
+
+def wallet_first(rows):
+    """Wallet currencies to the top - they are the account-wide totals, read at a
+    glance, and they do not belong buried between storage and character rows. Across
+    several accounts this groups every wallet together rather than one block per
+    account."""
+    wallet_rows = [row for row in rows if str(row[1]).endswith('.wallet')]
+    other_rows = [row for row in rows if not str(row[1]).endswith('.wallet')]
+    return wallet_rows + other_rows
+
+
 def main():
     parser = argparse.ArgumentParser(description='GW2 Item Extractor - Workhorse script')
     parser.add_argument('--api-keys', nargs='+', default=['api_keys.txt'], help='API key(s) or path to API keys file')
@@ -146,8 +246,10 @@ def main():
     if args.item_ids:
         # Check if it's a file path (single argument that exists as file)
         if len(args.item_ids) == 1 and os.path.isfile(args.item_ids[0]):
-            with open(args.item_ids[0], 'r') as f:
-                item_ids = [int(line.strip()) for line in f.readlines() if line.strip()]
+            item_ids = read_item_ids(args.item_ids[0])
+            if not item_ids:
+                print(f"ERROR: no item ids found in {args.item_ids[0]}")
+                sys.exit(1)
         else:
             # Treat as direct item IDs
             item_ids = [int(id) for id in args.item_ids]
@@ -243,54 +345,21 @@ def main():
             prices.update(batch_get_prices(gg, unpriced))
             priced_ids |= unpriced
 
-        # Phase 5: emit rows in original order — account inventories, wallet, characters
-        for vv, inv in inv_groups:
-            result = search_list(result, jj, vv, inv, items_dict, prices, verbosity, id_filter)
-
+        # Phase 5: fetch the wallet, if asked, then hand everything to build_rows
+        wallet = None
+        all_currencies = None
         if get_wallet:
-            vv = jj + '.wallet'
             wallet = gg.accountwallet.get()
-            currency_ids = gg.currencies.get()
-            all_currencies = gg.currencies.get(ids=currency_ids)
-            for ccc in all_currencies:
-                oo = ccc['id']
-                ww = get_value(wallet, oo)
-                nn = ccc['name']
-                dd = ccc.get('description', '')
-                if nn:
-                    # Currencies have no trading post or vendor price
-                    if verbosity:
-                        print("Adding element:", [jj, vv, ww, oo, nn, '', NO_VALUE_SOURCE, dd])
-                    result.append([jj, vv, ww, oo, nn, '', NO_VALUE_SOURCE, dd])
+            all_currencies = gg.currencies.get(ids=gg.currencies.get())
 
-        for vv, ss in char_invs:
-            if ss is None:
-                continue
-            if get_unfiltered:
-                for bag in ss['bags']:
-                    if bag:
-                        for item in bag.get('inventory', []):
-                            if isinstance(item, dict) and item:
-                                ooo = item['id']
-                                ww = item['count']
-                                append_item(result, jj, vv, ww, ooo, items_dict, prices,
-                                            bool(item.get('binding')), verbosity)
-            else:
-                for ooo in item_ids:
-                    qq = [d for bag in ss['bags'] if bag for d in bag.get('inventory', []) if isinstance(d, dict) and d['id'] == ooo]
-                    ww = sum(d['count'] for d in qq)
-                    # One unbound copy means the trading post price is reachable for this row
-                    bound = bool(qq) and all(d.get('binding') for d in qq)
-                    append_item(result, jj, vv, ww, ooo, items_dict, prices, bound, verbosity)
+        result.extend(build_rows(jj, inv_groups, char_invs, items_dict, prices, item_ids,
+                                 id_filter=id_filter, dump_all=get_unfiltered,
+                                 wallet=wallet, currencies=all_currencies,
+                                 verbosity=verbosity))
 
-    # Wallet currencies first - they are the account-wide totals, read at a glance,
-    # and they do not belong buried between storage and character rows.
-    wallet_rows = [row for row in result if str(row[1]).endswith('.wallet')]
-    other_rows = [row for row in result if not str(row[1]).endswith('.wallet')]
-    result = wallet_rows + other_rows
+    result = wallet_first(result)
 
-    df = pd.DataFrame(result, columns=['Account Name', 'Character Name', 'Amount', 'Item ID',
-                                       'Item Name', 'Value', 'Source', 'Description'])
+    df = pd.DataFrame(result, columns=COLUMNS)
 
     # Create output directory if it doesn't exist (cross-platform)
     output_dir = os.path.dirname(args.output)

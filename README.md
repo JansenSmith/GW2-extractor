@@ -41,7 +41,10 @@ Running without arguments displays this README.
 - **API keys file**: One GW2 API key per line. Blank lines are skipped, and anything after a `#`
   or a `,` on a line is ignored - so `YOUR-KEY-HERE,jazz` works and the `,jazz` is treated as a note
   rather than sent as part of the key.
-- **Item IDs file**: One item ID per line
+- **Item IDs file**: One item ID per line. Read tolerantly, because this is the file edited
+  by hand: a UTF-8 BOM (what Notepad writes) is stripped, blank lines and `#` comments are
+  skipped, duplicates are dropped so a pasted id cannot double its rows, and a line that is
+  not a number is reported and skipped rather than killing the run.
 
 ## Examples
 
@@ -89,9 +92,34 @@ Multiply by `Amount` for what a stack is worth.
 
 ## Tests
 
-`test_baubles_only.py` pins the rule that asking for one item returns only that item. It runs
-offline against a fake API client, so it needs no key and makes no network calls:
+The whole suite runs offline against a fake API client - no key, no network, nothing written
+outside a temp directory:
 
 ```bash
-python test_baubles_only.py
+python run_tests.py                        # or: python -m unittest discover -s tests -t .
+python -m unittest tests.test_build_rows    # one module
 ```
+
+| File | What it pins |
+|---|---|
+| `tests/harness.py` | the shared rig: loads the script, the fixtures, and the fake client |
+| `tests/test_build_rows.py` | filtering per section, wallet handling, the value rungs, binding, row order |
+| `tests/test_item_ids.py` | `item_ids.txt` parsing - BOM, comments, blanks, duplicates, junk lines |
+| `tests/test_baubles_only.py` | end to end: mom's exact flag set returns only the item asked for |
+| `tests/record_fixtures.py` | re-records the public API fixtures |
+
+Fixtures are split on purpose. The three public endpoints (`items`, `commerce/prices`,
+`currencies`) are **recorded** from the live API into `tests/fixtures/`, so the fake client
+cannot silently disagree with reality about response shape - re-run `record_fixtures.py` after
+an API change and read the diff. Everything authenticated (account, characters, bank,
+materials, shared inventory, wallet) is **hand-written** in `harness.py`, because a recording
+of those would put real account names, character names and inventory into the repo.
+
+What the tests cannot catch: API shape drift, rate limiting, and the 404-on-an-all-untradable
+price chunk. Those only show up on a live run.
+
+### Testable seam
+
+`build_rows()` is pure - fetched data in, spreadsheet rows out, no API calls and no file IO.
+Everything that decides what lands in the CSV lives there, which is why the filtering can be
+tested without a key. `main()` is the fetch-and-write shell around it.

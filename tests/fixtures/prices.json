@@ -1,0 +1,26 @@
+[
+  {
+    "buys": {
+      "quantity": 1031562,
+      "unit_price": 1602
+    },
+    "id": 19721,
+    "sells": {
+      "quantity": 2289909,
+      "unit_price": 1605
+    },
+    "whitelisted": true
+  },
+  {
+    "buys": {
+      "quantity": 40073,
+      "unit_price": 26600000
+    },
+    "id": 30689,
+    "sells": {
+      "quantity": 25,
+      "unit_price": 35960000
+    },
+    "whitelisted": false
+  }
+]
