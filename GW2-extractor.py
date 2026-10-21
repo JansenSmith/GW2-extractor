@@ -163,6 +163,21 @@ def main():
         # Treat as direct API key(s)
         api_keys = args.api_keys
 
+    # When the caller asked for specific items, that applies everywhere - storage
+    # included, not just characters. It does not depend on the account, so work it
+    # out once.
+    id_filter = set(item_ids) if (item_ids and not get_unfiltered) else None
+
+    # Currencies are not items. A wallet row carries a *currency* id in the Item ID
+    # column, and the two namespaces overlap - 4 is both Gem and Assassin Transform
+    # Weapon - so there is no honest way to apply an item filter to the wallet. A
+    # filtered report therefore leaves the wallet out rather than padding itself with
+    # every currency in the game, which is what made a one-item report unreadable.
+    if get_wallet and id_filter is not None:
+        print("NOTE: --get-wallet ignored because --item-ids was given - currencies are "
+              "not items. Run with --get-unfiltered for wallet totals.")
+        get_wallet = False
+
     result = []
     prices = {}            # item id -> trading post price, shared across accounts
     priced_ids = set()     # ids already looked up, tradable or not
@@ -203,9 +218,7 @@ def main():
                         break
             char_invs.append((vv, ss))
 
-        # Phase 3: collect every item id we'll need to render. When the caller asked for
-        # specific items, that applies everywhere - storage included, not just characters.
-        id_filter = set(item_ids) if (item_ids and not get_unfiltered) else None
+        # Phase 3: collect every item id we'll need to render.
         all_ids = set()
         for _, inv in inv_groups:
             for item in inv:
@@ -245,7 +258,7 @@ def main():
                 nn = ccc['name']
                 dd = ccc.get('description', '')
                 if nn:
-                    # Currencies are not items; they have no trading post or vendor price
+                    # Currencies have no trading post or vendor price
                     if verbosity:
                         print("Adding element:", [jj, vv, ww, oo, nn, '', NO_VALUE_SOURCE, dd])
                     result.append([jj, vv, ww, oo, nn, '', NO_VALUE_SOURCE, dd])

@@ -31,7 +31,8 @@ subprocess.run([
     "--get-shared",
     "--get-materials",
     "--get-bank",
-    "--get-wallet",
+    # No --get-wallet: this report is filtered to item_ids.txt, and currencies are
+    # not items, so the extractor would drop the wallet anyway and say so every run.
     "--output", output_file,
     "--verbose"
 ])

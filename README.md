@@ -21,7 +21,10 @@ Running without arguments displays this README.
 - `--get-shared` - Include shared inventory
 - `--get-materials` - Include materials storage
 - `--get-bank` - Include bank storage
-- `--get-wallet` - Include wallet currencies
+- `--get-wallet` - Include wallet currencies. **Ignored when `--item-ids` is given** - a wallet row
+  carries a *currency* id in the `Item ID` column, and the two namespaces overlap (4 is both Gem and
+  Assassin Transform Weapon), so an item filter cannot be applied to it. A filtered report leaves the
+  wallet out and prints a note rather than appending every currency in the game.
 - `--verbose` - Enable verbose output
 
 ## Input Formats
@@ -83,3 +86,12 @@ Multiply by `Amount` for what a stack is worth.
   will buy it. No fee applies, so the number is raw.
 - `-` - no value: the item can be neither sold on the trading post nor vendored. Wallet currencies
   are always `-`, since they are not items and have no price.
+
+## Tests
+
+`test_baubles_only.py` pins the rule that asking for one item returns only that item. It runs
+offline against a fake API client, so it needs no key and makes no network calls:
+
+```bash
+python test_baubles_only.py
+```
