@@ -18,6 +18,11 @@ Running without arguments displays this README.
 - `--item-ids` - Item ID(s) or path to item IDs file. Limits every section of the report - characters,
   bank, materials and shared inventory alike - to those items.
 - `--get-unfiltered` - Get ALL items, ignoring item-ids filter
+- `--hide-empty` - Drop every row whose `Amount` is 0, and print how many were dropped. A
+  filtered report emits one row per requested item per character whether or not that character
+  holds any, so a hunt across 40 characters is mostly zeros; this cuts it to the characters who
+  actually have some. In a full dump it also drops the zero-balance wallet currencies. Off by
+  default, because a zero row is also how you see who has **none** of something.
 - `--get-shared` - Include shared inventory
 - `--get-materials` - Include materials storage
 - `--get-bank` - Include bank storage
@@ -56,6 +61,11 @@ python GW2-extractor.py --item-ids 70093
 Full inventory dump:
 ```bash
 python GW2-extractor.py --get-unfiltered --get-shared --get-materials --get-bank --get-wallet --output full_inventory.csv
+```
+
+Only the characters who actually hold one:
+```bash
+python GW2-extractor.py --item-ids 70093 --get-bank --hide-empty
 ```
 
 Multiple specific items:

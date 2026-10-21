@@ -147,7 +147,7 @@ def get_value(wallet, id):
 
 def build_rows(account_name, inv_groups, char_invs, items_dict, prices, item_ids,
                id_filter=None, dump_all=False, wallet=None, currencies=None,
-               verbosity=False):
+               hide_empty=False, verbosity=False):
     """Turn one account's already-fetched data into CSV rows.
 
     Pure: no API calls, no file IO, no clock. Everything that decides what lands in
@@ -164,6 +164,11 @@ def build_rows(account_name, inv_groups, char_invs, items_dict, prices, item_ids
                   with neither flag given, storage is dumped whole but the character
                   loop has no ids to walk and so contributes nothing.
     wallet/currencies: the two /v2 wallet payloads, or None to leave the wallet out
+    hide_empty:   drop rows whose Amount is 0. The filtered character loop emits a row
+                  per requested id per character whether or not that character holds
+                  any, so a hunt across 40 characters is mostly zeros; this turns the
+                  report into just the characters that have some. Off by default,
+                  because a zero row is also how you see who has *none*.
     """
     rows = []
 
@@ -201,7 +206,18 @@ def build_rows(account_name, inv_groups, char_invs, items_dict, prices, item_ids
                 bound = bool(qq) and all(d.get('binding') for d in qq)
                 append_item(rows, account_name, vv, ww, ooo, items_dict, prices, bound, verbosity)
 
+    if hide_empty:
+        rows = drop_empty(rows)
+
     return rows
+
+
+def drop_empty(rows):
+    """Rows with an Amount of 0. Applied to the finished rows rather than at each
+    append site, so it catches zero-balance wallet currencies in a full dump as well as
+    the characters who hold none of a hunted item. --verbose still traces every row
+    collected, including the ones dropped here."""
+    return [row for row in rows if row[2] != 0]
 
 
 def wallet_first(rows):
@@ -224,6 +240,7 @@ def main():
     parser.add_argument('--get-bank', action='store_true', help='Get bank storage')
     parser.add_argument('--get-wallet', action='store_true', help='Get wallet currencies')
     parser.add_argument('--get-unfiltered', action='store_true', help='Get ALL items, ignore item-ids filter')
+    parser.add_argument('--hide-empty', action='store_true', help='Drop rows with an Amount of 0')
     parser.add_argument('--verbose', action='store_true', help='Enable verbose output')
 
     # If no arguments provided, display README
@@ -239,6 +256,7 @@ def main():
     get_bank = args.get_bank
     get_wallet = args.get_wallet
     get_unfiltered = args.get_unfiltered
+    hide_empty = args.hide_empty
     verbosity = args.verbose
 
     # Load item IDs if provided
@@ -352,10 +370,18 @@ def main():
             wallet = gg.accountwallet.get()
             all_currencies = gg.currencies.get(ids=gg.currencies.get())
 
-        result.extend(build_rows(jj, inv_groups, char_invs, items_dict, prices, item_ids,
-                                 id_filter=id_filter, dump_all=get_unfiltered,
-                                 wallet=wallet, currencies=all_currencies,
-                                 verbosity=verbosity))
+        account_rows = build_rows(jj, inv_groups, char_invs, items_dict, prices, item_ids,
+                                  id_filter=id_filter, dump_all=get_unfiltered,
+                                  wallet=wallet, currencies=all_currencies,
+                                  verbosity=verbosity)
+        if hide_empty:
+            # Say how many rows were suppressed, so a short report is not a mystery
+            kept = drop_empty(account_rows)
+            hidden = len(account_rows) - len(kept)
+            print(f"{jj}: kept {len(kept)} of {len(account_rows)} rows, "
+                  f"hid {hidden} with an Amount of 0")
+            account_rows = kept
+        result.extend(account_rows)
 
     result = wallet_first(result)
 

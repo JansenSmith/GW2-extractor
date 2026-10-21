@@ -93,6 +93,28 @@ class ItemIdsFromFileTest(unittest.TestCase):
         self.assertEqual(len(rows), 4)
 
 
+class HideEmptyEndToEndTest(unittest.TestCase):
+    """The flag mom would actually type, plus the line that explains the short report."""
+
+    def test_only_the_characters_who_have_some(self):
+        _, rows = run_extractor(['--item-ids', str(SHINY), '--get-shared', '--get-bank',
+                                 '--hide-empty'])
+        self.assertEqual([r['Character Name'] for r in rows],
+                         [ACCOUNT_NAME + '.shared', ACCOUNT_NAME + '.bank', 'Hoarder'])
+        self.assertNotIn('0', {r['Amount'] for r in rows})
+
+    def test_the_hidden_count_is_reported(self):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            run_extractor(['--item-ids', str(SHINY), '--get-shared', '--get-bank',
+                           '--hide-empty'])
+        self.assertIn('kept 3 of 4 rows, hid 1', buf.getvalue())
+
+    def test_default_run_still_keeps_them(self):
+        _, rows = run_extractor(['--item-ids', str(SHINY), '--get-shared', '--get-bank'])
+        self.assertIn('0', {r['Amount'] for r in rows})
+
+
 class UnfilteredStillHasEverythingTest(unittest.TestCase):
     """The fix must not touch the full dump - there --get-wallet is the whole point."""
 

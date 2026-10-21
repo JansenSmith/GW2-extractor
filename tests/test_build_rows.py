@@ -31,7 +31,8 @@ def char_invs():
     return list(CHARACTERS.items())
 
 
-def rows(item_ids=(), dump_all=False, with_wallet=False, groups=None, chars=None):
+def rows(item_ids=(), dump_all=False, with_wallet=False, groups=None, chars=None,
+         hide_empty=False):
     """build_rows with the filter wired the way main() wires it."""
     item_ids = list(item_ids)
     id_filter = set(item_ids) if (item_ids and not dump_all) else None
@@ -43,6 +44,7 @@ def rows(item_ids=(), dump_all=False, with_wallet=False, groups=None, chars=None
         id_filter=id_filter, dump_all=dump_all,
         wallet=WALLET if with_wallet else None,
         currencies=list(CURRENCIES.values()) if with_wallet else None,
+        hide_empty=hide_empty,
     )
 
 
@@ -208,6 +210,50 @@ class BindingAggregationTest(unittest.TestCase):
         amount, source = self.value_of([])
         self.assertEqual(amount, 0)
         self.assertEqual(source, 'TP')
+
+
+class HideEmptyTest(unittest.TestCase):
+    """A hunt across 40 characters is mostly zero rows. --hide-empty turns the report
+    into just the characters who have some - off by default, because a zero row is also
+    how you see who has none."""
+
+    def test_off_by_default_zero_rows_stay(self):
+        out = rows([SHINY])
+        self.assertIn(0, {r[AMOUNT] for r in out})
+
+    def test_on_drops_the_zero_character_rows(self):
+        out = rows([SHINY], hide_empty=True)
+        self.assertNotIn(0, {r[AMOUNT] for r in out})
+        # Hoarder holds 5; Decoychar holds none and is gone.
+        self.assertEqual([r[CHARACTER] for r in out if r[CHARACTER] in CHARACTERS],
+                         ['Hoarder'])
+
+    def test_on_keeps_what_was_actually_found(self):
+        kept = rows([SHINY], hide_empty=True)
+        self.assertEqual({r[ITEM_ID] for r in kept}, {SHINY})
+        self.assertEqual(sorted(r[AMOUNT] for r in kept), [1, 3, 5])  # shared, bank, Hoarder
+
+    def test_on_leaves_nothing_when_nobody_owns_any(self):
+        self.assertEqual(rows([MINI], hide_empty=True), [])
+
+    def test_on_drops_zero_balance_currencies(self):
+        # The wallet lists every currency in the game, most of them at zero.
+        currencies = list(CURRENCIES.values())
+        out = build_rows(ACCOUNT_NAME, [], [], items_dict(), prices_dict(), [],
+                         wallet=[{'id': 1, 'value': 500}], currencies=currencies,
+                         hide_empty=True)
+        self.assertEqual([r[ITEM_ID] for r in out], [1])
+
+    def test_on_does_not_touch_storage_rows(self):
+        # Storage only lists what is there, so nothing should be lost from it.
+        with_zeros = [r for r in rows([SHINY]) if r[CHARACTER] not in CHARACTERS]
+        without = [r for r in rows([SHINY], hide_empty=True) if r[CHARACTER] not in CHARACTERS]
+        self.assertEqual(with_zeros, without)
+
+    def test_drop_empty_is_a_pure_filter(self):
+        given = [['a', 'Char', 0], ['a', 'Char', 2], ['a', 'Char', 0]]
+        self.assertEqual(extractor.drop_empty(given), [['a', 'Char', 2]])
+        self.assertEqual(len(given), 3, 'drop_empty mutated its input')
 
 
 class WalletFirstTest(unittest.TestCase):
